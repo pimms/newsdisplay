@@ -1,6 +1,5 @@
 # Ignore everything unless explicitly stated
 *
-*/*
 
 # C / C++ files
 !*.cpp
