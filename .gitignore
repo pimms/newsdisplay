@@ -1,12 +1,10 @@
-# Ignore everything unless explicitly stated
 *
-
-# C / C++ files
-!*.cpp
-!*.c
-!*.h
-
-# Other required files
+!.gitignore
+!readme.*
 !README.*
 !makefile
 !Makefile
+!*/
+!*.h
+!*.cpp
+!*.txt
