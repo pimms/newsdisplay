@@ -1,13 +1,13 @@
-# Compiled Object files
-*.slo
-*.lo
-*.o
+# Ignore everything unless explicitly stated
+*
+*/*
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
+# C / C++ files
+!*.cpp
+!*.c
+!*.h
 
-# Compiled Static libraries
-*.lai
-*.la
-*.a
+# Other required files
+!README.*
+!makefile
+!Makefile
