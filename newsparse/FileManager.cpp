@@ -141,7 +141,7 @@ bool FileManager::OpenFile(fstream &file, string filename, int mode, bool create
 		return true;
 	}
 
-	file.open(filename, mode);
+	file.open(filename, (ios_base::openmode)mode);
 
 	if (!create) {
 		return file.is_open();
@@ -149,7 +149,7 @@ bool FileManager::OpenFile(fstream &file, string filename, int mode, bool create
 
 	if (!file.is_open()) {
 		CreateDummyFile(filename);
-		return OpenFile(file, filename, mode, false);
+		return OpenFile(file, filename, (ios_base::openmode)mode, false);
 	}
 
 	return true;
