@@ -1,14 +1,25 @@
 #include "RssParser.h"
 #include <ncurses.h>
+#include <map>
 
 using namespace std;
 
 
 struct Subview {
+					Subview();
+
+					// Calculate a color value based
+					// on the text to give the same item
+					// the same color every time.
+	int 			GetColorPair(string title, string desc);
+
 	int 			x;
 	int 			y;
 	int 			w;
 	int 			h;
+
+private:
+	static bool 	colPairsInit;	
 };
 
 

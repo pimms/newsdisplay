@@ -7,8 +7,43 @@
 #define SUBVIEW_H 	7
 
 
+bool Subview::colPairsInit = false;
+
+Subview::Subview() {
+	if (!colPairsInit && has_colors()) {
+		for (int i=1; i<=7; i++) {
+			init_pair(i, i, 0);
+		}
+
+		colPairsInit = true;
+	}
+}
+
+
+int Subview::GetColorPair(string title, string desc) {
+	long long int total = 0;
+
+	for (int i=0; i<title.length(); i++) {
+		total += title[i];
+	}
+
+	for (int i=0; i<desc.length(); i++) {
+		total += desc[i];
+	}
+
+	return (total % 7) + 1;
+}
+
+
+// =============================================
+
+
 ViewManager::ViewManager() {
 	initscr();
+
+	if (has_colors()) {
+		start_color();
+	}
 }
 
 
@@ -72,7 +107,7 @@ void ViewManager::CalculateDimensions() {
 
 			subviews.push_back(sub);
 
-			usedX += SUBVIEW_W + extraX;
+			usedX += sub.w;
 		}
 
 		usedY += SUBVIEW_H + extraY;
@@ -159,6 +194,13 @@ void ViewManager::DrawSubview(int idx) {
 	int line = 1;
 	int totalLines = titleLines.size() + titleDesc.size() + 1;
 
+	
+	int pair = sub->GetColorPair(item->title, item->desc);
+
+	if (has_colors()) {
+		attron(COLOR_PAIR(pair));
+	}
+
 	while (line < sub->h) {
 		vector<string> *vec = (titleLines.size()) 
 							   ? &titleLines
@@ -182,6 +224,8 @@ void ViewManager::DrawSubview(int idx) {
 			break;
 		}
 	}
+
+	attroff(COLOR_PAIR(pair));
 }
 
 
