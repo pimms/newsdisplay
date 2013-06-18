@@ -1,7 +1,7 @@
 CXX=g++
 INC=
-LIBS=-lcurl
-FLG=-std=gnu++0x
+LIBS=-lcurl -lncurses
+FLG=-std=gnu++0x -g
 
 SRC=$(shell ls newsparse/*.cpp)
 OBJ=$(subst .cpp,.o,$(SRC))

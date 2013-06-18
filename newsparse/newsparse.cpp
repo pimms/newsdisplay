@@ -1,9 +1,11 @@
 #include <iostream>
 #include <string>
+#include <unistd.h>
 #include <curl/curl.h>
 #include "HttpReader.h"
 #include "RssParser.h"
 #include "FileManager.h"
+#include "ViewManager.h"
 
 using namespace std;
 
@@ -23,6 +25,7 @@ int main(int argc, char *argv[]) {
 
     curl_global_init(CURL_GLOBAL_ALL);
 
+    /*
 	vector< pair<string,string> > reg;
 	reg = FileManager::GetRegisteredSources();
 
@@ -41,7 +44,8 @@ int main(int argc, char *argv[]) {
 		int countNew = itemMgrs[i]->Reload();
 		int count = itemMgrs[i]->rssItems.size();
 
-		cout << countNew << " new feeds from " << itemMgrs[i]->GetSource()  << ":\n";
+		cout << countNew << " new feeds from " 
+			 << itemMgrs[i]->GetSource()  << ":\n";
 
 		for (int j=count-countNew; j<count; j++) {
 			RssItem *item = &itemMgrs[i]->rssItems[j];
@@ -52,6 +56,14 @@ int main(int argc, char *argv[]) {
 			cout << item->link << "\n";
 			cout << "\n";
 		}
+	}
+	*/
+
+	ViewManager viewMgr;
+
+	while (true) {
+		viewMgr.Redraw();
+		usleep(1000000);
 	}
 
 	curl_global_cleanup();
@@ -102,7 +114,8 @@ void RemoveSource(string source) {
 
 
 void ListSources() {
-	vector< pair<string,string> > regs = FileManager::GetRegisteredSources();
+	vector< pair<string,string> > regs;
+	regs = FileManager::GetRegisteredSources();
 
 	for (int i=0; i<regs.size(); i++) {
 		cout << regs[i].second << "\n";
