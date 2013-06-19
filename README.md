@@ -20,8 +20,11 @@ g++ is required for building ndisp
 
 Clone and build 
 	$> cd ~/your/favorite/code/location/
+	
 	$> git clone https://github.com/pimms/newsdisplay.git 
+	
 	$> cd newsdisplay 
+	
 	$> make
 
 Add the google news-feed  
