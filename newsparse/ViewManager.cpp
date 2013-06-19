@@ -10,8 +10,9 @@
 
 #include <atomic>
 
-#define SUBVIEW_W	40
-#define SUBVIEW_H 	7
+#define REFRESH_INTERVAL 60
+#define SUBVIEW_W    	 40
+#define SUBVIEW_H 	 7
 
 
 pthread_mutex_t refreshlock;
@@ -157,7 +158,7 @@ void ViewManager::MainLoop() {
 		enableInput = false;
 	}
 
-	time_t nextUpdate = time(0) + 4;
+	time_t nextUpdate = time(0) + REFRESH_INTERVAL;
 	ReloadItems();
 	Redraw();
 
@@ -177,7 +178,7 @@ void ViewManager::MainLoop() {
 				ReloadItems();
 				Redraw();
 			}
-			nextUpdate = now + 4;
+			nextUpdate = now + REFRESH_INTERVAL;
 		} else {
 			usleep(10000);
 		}
