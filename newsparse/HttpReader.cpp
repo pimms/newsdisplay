@@ -29,7 +29,7 @@ HttpReader::HttpReader(string url) {
 
 
 HttpReader::~HttpReader(void) {
-
+	
 }
 
 

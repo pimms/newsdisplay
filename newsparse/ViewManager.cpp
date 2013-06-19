@@ -2,9 +2,86 @@
 #include "FileManager.h"
 #include "RssParser.h"
 
+#include <pthread.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <unistd.h>
+#include <curl/curl.h>
+
+#include <atomic>
 
 #define SUBVIEW_W	40
 #define SUBVIEW_H 	7
+
+
+pthread_mutex_t refreshlock;
+bool undrawnItems = false;
+volatile bool refreshRunning = false;
+
+void* Refresh(void *param) {
+	refreshRunning = true;
+	ViewManager *viewMgr = (ViewManager*)param;
+
+	pthread_mutex_lock(&refreshlock);
+
+	curl_global_init(CURL_GLOBAL_ALL);
+	viewMgr->ReloadItems();
+	curl_global_cleanup();
+
+	pthread_mutex_unlock(&refreshlock);
+
+	refreshRunning = false;
+	return NULL;
+}
+
+
+// =============================================
+
+
+pthread_mutex_t inputlock;
+string g_input;
+bool t_continue = true;
+
+void StdinNoncanonical(struct termios &orgopt) {
+	struct termios new_opts;
+
+	tcgetattr(STDIN_FILENO, &orgopt);
+	memcpy(&new_opts, &orgopt, sizeof(new_opts));
+
+	new_opts.c_lflag &= ~(ECHO);
+	new_opts.c_lflag &= ~(ICANON);
+	new_opts.c_cc[VMIN] = 0;
+	new_opts.c_cc[VTIME] = 0;
+	tcsetattr(STDIN_FILENO, TCSANOW, &new_opts);
+}
+
+void StdinCanonical(struct termios &orgopt) {
+	tcsetattr(STDIN_FILENO, TCSANOW, &orgopt);
+}
+
+void* StdinThread(void*) {
+	struct termios orgopts;
+	int c=0, res=0;
+
+	StdinNoncanonical(orgopts);
+
+	while (t_continue) {
+		while ((c = getchar()) > 0) {
+			pthread_mutex_lock(&inputlock);
+			g_input += c;
+			pthread_mutex_unlock(&inputlock);
+		}
+		
+		usleep(10000);
+	}
+
+  	StdinCanonical(orgopts);
+
+  	return NULL;
+}
+
+
+// =============================================
 
 
 bool Subview::colPairsInit = false;
@@ -14,6 +91,8 @@ Subview::Subview() {
 		for (int i=1; i<=7; i++) {
 			init_pair(i, i, 0);
 		}
+
+		init_pair(8, COLOR_BLACK, COLOR_WHITE);
 
 		colPairsInit = true;
 	}
@@ -44,6 +123,12 @@ ViewManager::ViewManager() {
 	if (has_colors()) {
 		start_color();
 	}
+
+	selectedIndex = 0;
+	numX = 0;
+	numY = 0;
+	dimx = 0;
+	dimy = 0;
 }
 
 
@@ -53,11 +138,65 @@ ViewManager::~ViewManager() {
 }
 
 
+void ViewManager::MainLoop() {
+	bool enableInput = true;
+	pthread_t inputThread, refreshThread;
+
+	if (enableInput &&
+		pthread_mutex_init(&inputlock, NULL)) {
+		enableInput = false;
+	}
+
+	if (enableInput && 
+		pthread_mutex_init(&refreshlock, NULL)) {
+		enableInput = false;
+	}
+
+	if (enableInput && 
+		pthread_create(&inputThread, NULL, &StdinThread, NULL)) {
+		enableInput = false;
+	}
+
+	time_t nextUpdate = time(0) + 4;
+	ReloadItems();
+	Redraw();
+
+	while (true) {
+		if (enableInput && !refreshRunning) {
+			HandleInput();
+		}
+
+		time_t now = time(0);
+		if (now >= nextUpdate) {
+			if (enableInput) {
+				if (!refreshRunning) {
+					pthread_create(&refreshThread, NULL, 
+								   &Refresh, this);
+				}
+			} else {
+				ReloadItems();
+				Redraw();
+			}
+			nextUpdate = now + 4;
+		} else {
+			usleep(10000);
+		}
+
+		if (pthread_mutex_trylock(&refreshlock)) {
+			if (undrawnItems && !refreshRunning) {
+				Redraw();
+				undrawnItems = false;
+			}
+			pthread_mutex_unlock(&refreshlock);
+		}
+	}
+}
+
+
 void ViewManager::Redraw() {
 	erase();
 
 	CalculateDimensions();
-	ReloadItems();
 	AssignDisplayItems(subviews.size());
 
 	for (int i=0; i<subviews.size(); i++) {
@@ -70,6 +209,80 @@ void ViewManager::Redraw() {
 }
 
 
+void ViewManager::ReloadItems() {
+	vector< pair<string,string> > regs;
+	regs = FileManager::GetRegisteredSources();
+
+	ClearManagers();
+	undrawnItems = true;
+
+	for (int i=0; i<regs.size(); i++) {
+		string source = regs[i].second;
+
+		ItemManager *mgr = new ItemManager(source);
+		
+		int result = mgr->Reload();
+
+		if (result >= 0) {
+			itemMgrs.push_back(mgr);
+		}
+	}
+}
+
+
+
+
+void ViewManager::HandleInput() {
+	pthread_mutex_lock(&inputlock);
+
+	if (g_input.length()) {
+		int prevIndex = selectedIndex;
+
+		for (int i=0; i<g_input.length(); i++) {
+			char c = g_input[i];
+
+			/* React to arrow presses */
+			if (c == 65) {
+				selectedIndex -= numX;
+			}
+			if (c == 66) {
+				selectedIndex += numX;
+			}
+			if (c == 67) {
+				selectedIndex++;
+			}
+			if (c == 68) {
+				selectedIndex--;
+			}
+
+			/* Clamp the index */
+			if (selectedIndex >= subviews.size()) {
+				selectedIndex -= subviews.size();
+			}
+			if (selectedIndex < 0) {
+				selectedIndex += subviews.size();
+			}
+
+			/* Follow the items link on enter */
+			if (c == 13) {
+				if (selectedIndex < displayItems.size()) {
+					RssItem *item = displayItems[selectedIndex];
+					OpenLink(item->link);
+				}
+			}
+		}
+
+		if (prevIndex != selectedIndex) {
+			DrawSubview(prevIndex, 7);
+			DrawSubview(selectedIndex, 8);
+			refresh();
+		}
+
+		g_input.clear();
+	}
+
+	pthread_mutex_unlock(&inputlock);
+}
 
 
 void ViewManager::CalculateDimensions() {
@@ -80,8 +293,8 @@ void ViewManager::CalculateDimensions() {
 	// The rightmost and bottommost edges are
 	// not allocated to subviews, but drawn by
 	// itself.
-	int numX = (dimx-1) / SUBVIEW_W;
-	int numY = (dimy-1) / SUBVIEW_H;
+	numX = (dimx-1) / SUBVIEW_W;
+	numY = (dimy-1) / SUBVIEW_H;
 
 	int usedX = 0;
 	int usedY = 0;
@@ -116,24 +329,6 @@ void ViewManager::CalculateDimensions() {
 }	
 
 
-void ViewManager::ReloadItems() {
-	vector< pair<string,string> > regs;
-	regs = FileManager::GetRegisteredSources();
-
-	ClearManagers();
-
-	for (int i=0; i<regs.size(); i++) {
-		string source = regs[i].second;
-
-		ItemManager *mgr = new ItemManager(source);
-		
-		if (mgr->Reload() >= 0) {
-			itemMgrs.push_back(mgr);
-		}
-	}
-}
-
-
 void ViewManager::AssignDisplayItems(int count) {
 	displayItems.clear();
 
@@ -166,11 +361,12 @@ void ViewManager::AssignDisplayItems(int count) {
 }
 
 
-void ViewManager::DrawSubview(int idx) {
+void ViewManager::DrawSubview(int idx, int fillColorPair) {
 	Subview *sub = &subviews[idx];
 	RssItem *item = NULL;
 
-	// Draw the subview
+	// Draw the edges
+	
 	for (int x=sub->x; x<sub->x+sub->w; x++) {
 		mvaddch(sub->y, x, '#');
 	}
@@ -178,6 +374,9 @@ void ViewManager::DrawSubview(int idx) {
 	for (int y=sub->y; y<sub->y+sub->h; y++) {
 		mvaddch(y, sub->x, '#');
 	}
+
+	// Clear the subview
+	FillSubview(idx, fillColorPair);
 
 	// draw the text within the subview, if
 	// enough items are available
@@ -198,6 +397,10 @@ void ViewManager::DrawSubview(int idx) {
 	int pair = sub->GetColorPair(item->title, item->desc);
 
 	if (has_colors()) {
+		if (idx == selectedIndex) {
+			pair = 8;
+		} 
+
 		attron(COLOR_PAIR(pair));
 	}
 
@@ -240,17 +443,70 @@ void ViewManager::DrawEdges() {
 }
 
 
+void ViewManager::FillSubview(int subIdx, int colorPair) {
+	if (has_colors()) {
+		attron(COLOR_PAIR(colorPair));
+
+		Subview *sub = &subviews[subIdx];
+		for (int x=sub->x+1; x<sub->x+sub->w; x++) {
+			for (int y=sub->y+1; y<sub->y+sub->h; y++) {
+				mvaddch(y, x, ' ');
+			}
+		}
+
+		attroff(COLOR_PAIR(colorPair));
+	}
+}
+
+
 void ViewManager::ClearManagers() {
 	for (int i=0; i<itemMgrs.size(); i++) {
 		delete itemMgrs[i];
 	}
 
+	displayItems.clear();
 	itemMgrs.clear();
+}
+
+
+void ViewManager::OpenLink(string link) {
+	if (!link.length()) {
+		return;
+	}
+
+	// Google News-links (and possibly others) are formatted
+	// as such: "http://www.google.com/?.....&url=http://...../&x=y".
+	// This brings you to a redirect-notice when opened via 
+	// system commands. These lines identify such links and 
+	// extracts the ACTUAL url. No GET-parameters can be passed
+	// to the contained link, so it's safe to extract any URL 
+	// between a "=" and a "&".
+	size_t start = link.find("=http://", 4);
+	if (start != string::npos) {
+		size_t end = link.find("&", ++start);
+		if (end == string::npos) {
+			end = link.length();
+		}
+		
+		link = link.substr(start, end-start);
+	}
+
+	string cmd = "gnome-open ";
+	cmd += link;
+
+	FILE *fp;
+	fp = popen(cmd.c_str(), "r");
+	if (fp) {
+		pclose(fp);
+	}
 }
 
 
 void ViewManager::DivideString(string str, vector<string> &vec,
 								int maxLen) {
+								
+	if (str == "") return;
+	
 	int start = 0;
 	while (start < str.length()) {
 		int remaining = (int)str.length() - start;
@@ -259,7 +515,7 @@ void ViewManager::DivideString(string str, vector<string> &vec,
 		/* Only split the strings at spaces */
 		if (sublen == maxLen) {
 			char *c = &str[start+sublen];
-			while ((*c != ' ' && *c != '\n') && sublen >= 0) {
+			while ((*c != ' ' && *c != '\n') && sublen > 0) {
 				sublen--;
 				c--;
 			}

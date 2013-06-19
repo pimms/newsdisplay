@@ -1,10 +1,13 @@
 CXX=g++
 INC=
-LIBS=-lcurl -lncurses
+LIBS=-lcurl -lncurses -lpthread
 FLG=-std=gnu++0x -g
 
 SRC=$(shell ls newsparse/*.cpp)
 OBJ=$(subst .cpp,.o,$(SRC))
+
+Debug: all
+Release: all
 
 all: $(OBJ)
 	$(CXX) $(FLG) -o ndisp $(OBJ) $(INC) $(LIBS)

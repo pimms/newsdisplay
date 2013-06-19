@@ -74,8 +74,8 @@ bool FileManager::RemoveSource(string source) {
 
 			remove(regs[bestIdx].first.c_str());	// Delete the cache-file
 
-			regs.erase(regs.begin() + bestIdx);	
-			WriteRegistry(regs);				
+			regs.erase(regs.begin() + bestIdx);
+			WriteRegistry(regs);
 		}
 	} else {
 		cout << "No feed containing '" << source << "' found.\n";
@@ -87,7 +87,7 @@ bool FileManager::RemoveSource(string source) {
 
 
 FileManager::FileManager(void) {
-	
+
 }
 
 
@@ -141,7 +141,7 @@ bool FileManager::OpenFile(fstream &file, string filename, int mode, bool create
 		return true;
 	}
 
-	file.open(filename, (ios_base::openmode)mode);
+	file.open(filename, (std::ios_base::openmode)mode);
 
 	if (!create) {
 		return file.is_open();

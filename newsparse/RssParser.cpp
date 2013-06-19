@@ -163,7 +163,8 @@ int RssParser::Perform() {
 	xmlDoc->Parse(httpReader->GetContents().c_str());
 
 	if (!SetRssRootNode()) {
-		printf("Invalid XML - could not find root node <rss>!\n");
+		printf("Invalid XML - could not find root node <rss> ");
+		printf("in source %s!\n", source.c_str());
 		return -2;
 	}
 

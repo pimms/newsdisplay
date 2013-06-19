@@ -23,50 +23,9 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 
-    curl_global_init(CURL_GLOBAL_ALL);
-
-    /*
-	vector< pair<string,string> > reg;
-	reg = FileManager::GetRegisteredSources();
-
-	vector<ItemManager*> itemMgrs;
-
-	for (int i=0; i<reg.size(); i++) {
-		string file, source;
-		file = reg[i].first;
-		source = reg[i].second;
-
-		ItemManager *mgr = new ItemManager(source);
-		itemMgrs.push_back(mgr);
-	}
-
-	for (int i=0; i<itemMgrs.size(); i++) {
-		int countNew = itemMgrs[i]->Reload();
-		int count = itemMgrs[i]->rssItems.size();
-
-		cout << countNew << " new feeds from " 
-			 << itemMgrs[i]->GetSource()  << ":\n";
-
-		for (int j=count-countNew; j<count; j++) {
-			RssItem *item = &itemMgrs[i]->rssItems[j];
-			
-			cout << item->time << "\n";
-			cout << item->title << "\n";
-			cout << item->desc << "\n";
-			cout << item->link << "\n";
-			cout << "\n";
-		}
-	}
-	*/
-
 	ViewManager viewMgr;
-
-	while (true) {
-		viewMgr.Redraw();
-		usleep(1000000);
-	}
-
-	curl_global_cleanup();
+	viewMgr.MainLoop();  
+	
     return 0;
 }
 

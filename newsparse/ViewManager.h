@@ -28,23 +28,30 @@ public:
 					ViewManager();
 					~ViewManager();
 
+	void 			MainLoop();
 	void 			Redraw();
+	void 			ReloadItems();
 
 private:
 	vector<ItemManager*> itemMgrs;
 	vector<RssItem*> 	 displayItems;
 	vector<Subview>	 	 subviews;
 
-	int 			dimx;
-	int 			dimy;
+	int 			selectedIndex;
+	int 			dimx, dimy;
+	int 			numX, numY;
+
+	void 			HandleInput();
 
 	void 			CalculateDimensions();
-	void 			ReloadItems();
 	void 			AssignDisplayItems(int count);
-	void 			DrawSubview(int idx);
+	void 			DrawSubview(int idx, int fillColorPair = 7);
+	void 			DrawSelection();
 	void 			DrawEdges();
+	void 			FillSubview(int subview, int colorPair);
 
 	void 			ClearManagers();
+	void 			OpenLink(string link);
 
 	void 			DivideString(string str, vector<string> &vec,
 								 int maxLen);
