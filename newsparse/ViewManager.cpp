@@ -10,9 +10,9 @@
 
 #include <atomic>
 
-#define REFRESH_INTERVAL 60
-#define SUBVIEW_W    	 40
-#define SUBVIEW_H 	 7
+#define REFRESH_INTERVAL 	60
+#define SUBVIEW_W    	 	40
+#define SUBVIEW_H 	 		7
 
 
 pthread_mutex_t refreshlock;
@@ -205,7 +205,6 @@ void ViewManager::Redraw() {
 	}
 
 	DrawEdges();
-
 	refresh();
 }
 
@@ -226,6 +225,8 @@ void ViewManager::ReloadItems() {
 
 		if (result >= 0) {
 			itemMgrs.push_back(mgr);
+		} else {
+			delete mgr;
 		}
 	}
 }
