@@ -18,7 +18,7 @@ struct RssItem {
 	string			title;
 	string			link;
 	string			desc;
-	time_t			time;
+	time_t			timestamp;
 	
 					RssItem();
 	void			WriteToFile(fstream &file);
@@ -29,8 +29,13 @@ struct RssItem {
 					//	    No data was read, the object should be discarded.
 	bool			ReadFromFile(fstream &file);
 
+	bool 			TooOld();
+
 	bool			operator==(const RssItem &o) const;
 	bool			operator!=(const RssItem &o) const;
+
+					// Operator for std::sort algorithm
+	bool 			operator<(const RssItem &o) const;
 };
 
 
@@ -86,4 +91,6 @@ private:
 	void			WriteToFile();
 	void			LoadFromFile();
 	int				LoadFromSource();
+
+	void 			SortByDate();
 };

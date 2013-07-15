@@ -216,18 +216,14 @@ void ViewManager::ReloadItems() {
 	ClearManagers();
 	undrawnItems = true;
 
+	// Reload from source & file
 	for (int i=0; i<regs.size(); i++) {
 		string source = regs[i].second;
 
 		ItemManager *mgr = new ItemManager(source);
 		
 		int result = mgr->Reload();
-
-		if (result >= 0) {
-			itemMgrs.push_back(mgr);
-		} else {
-			delete mgr;
-		}
+		itemMgrs.push_back(mgr); 
 	}
 }
 
@@ -331,34 +327,41 @@ void ViewManager::CalculateDimensions() {
 }	
 
 
-void ViewManager::AssignDisplayItems(int count) {
+void ViewManager::AssignDisplayItems(int count, bool picky) {
+	// Put 'count' rss-items into the displayItems
+	// vector. Iterate over each feed and add in
+	// total (count / num_feeds) items from each
+	// feed (if possible).
+	//
+	// If picky=true, items but the first in a feed
+	// older than 24 hours will not be displayed.
 	displayItems.clear();
 
-	// Shove all items into a vector 
-	vector<RssItem*> items;
+	int idx = 0;
+	while (displayItems.size() < count) {
+		bool hit = false;
+		for (int i=0; i<itemMgrs.size(); i++) {
+			ItemManager *mgr = itemMgrs[i];
 
-	for (int i=0; i<itemMgrs.size(); i++) {
-		ItemManager *mgr = itemMgrs[i];
-		for (int j=0; j<mgr->rssItems.size(); j++) {
-			items.push_back(&mgr->rssItems[j]);
-		}
-	}
+			if (mgr->rssItems.size() >= idx) {
+				if (picky && idx && mgr->rssItems[idx].TooOld()) {
+					continue;
+				}
 
-	// Find as many new as possible, ordered from
-	// newest to oldest
-	while (items.size() && displayItems.size() < count) {
-		RssItem *item = items[0];
-		int bestIdx = 0;
-
-		for (int i=1; i<items.size(); i++) {
-			if (items[i]->time > item->time) {
-				item = items[i];
-				bestIdx = i;
+				displayItems.push_back(&mgr->rssItems[idx]);
+				hit = true;
 			}
 		}
 
-		items.erase(items.begin() + bestIdx);
-		displayItems.push_back(item);
+		if (!hit) {
+			break;
+		}
+
+		idx++;
+	}
+
+	if (picky && displayItems.size() < count) {
+		AssignDisplayItems(count, false);
 	}
 }
 

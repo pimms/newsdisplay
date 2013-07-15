@@ -44,7 +44,7 @@ private:
 	void 			HandleInput();
 
 	void 			CalculateDimensions();
-	void 			AssignDisplayItems(int count);
+	void 			AssignDisplayItems(int count, bool picky=true);
 	void 			DrawSubview(int idx, int fillColorPair = 7);
 	void 			DrawSelection();
 	void 			DrawEdges();

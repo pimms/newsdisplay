@@ -5,6 +5,7 @@
 #include "tinyxml.h"
 #include <fstream>
 #include <ctime>
+#include <algorithm>
 
 
 template<class C>
@@ -22,7 +23,7 @@ bool IsItemContained(const vector<C> &vec, const C &item) {
 
 
 RssItem::RssItem() {
-	time = 0;
+	timestamp = 0;
 }
 
 
@@ -41,7 +42,7 @@ void RssItem::WriteToFile(fstream &file) {
 		file << "[DESC]\n" << desc << "\n";
 	}
 
-	file << "[TIME]\n" << time << "\n";
+	file << "[TIME]\n" << timestamp << "\n";
 }
 
 
@@ -72,11 +73,15 @@ bool RssItem::ReadFromFile(fstream &file) {
 		}
 
 		if (line == "[TIME]") {
-			file >> time; file.ignore();
+			file >> timestamp; file.ignore();
 		}
 	}
 
 	return hits != 0;
+}
+
+bool RssItem::TooOld() {
+	return time(0) - timestamp > 86400;
 }
 
 
@@ -89,6 +94,11 @@ bool RssItem::operator==(const RssItem &o) const  {
 
 bool RssItem::operator!=(const RssItem &o) const  {
 	return !(*this == o);
+}
+
+
+bool RssItem::operator<(const RssItem &o) const {
+	return timestamp < o.timestamp;
 }
 
 
@@ -260,7 +270,7 @@ int RssParser::HandleCurrentItem() {
 
 	if (fields) {
 		if (!IsItemContained<RssItem>(*rssItems, item)) {
-			item.time = time(0);
+			item.timestamp = time(0);
 			rssItems->push_back(item);
 			return 1;
 		}
@@ -312,9 +322,24 @@ void ItemManager::WriteToFile() {
 void ItemManager::LoadFromFile() {
 	FileManager fmgr;
 	fmgr.ReadFromFile(&rssItems, rssParser->GetSource());
+
+	SortByDate();
 }
 
 
 int ItemManager::LoadFromSource() {
-	return rssParser->Perform();
+	int result = rssParser->Perform();
+
+	// Resort, we got a new delivery of shizzle
+	if (result > 0) {
+		SortByDate();
+	}
+
+	return result;
+}
+
+
+void ItemManager::SortByDate() {
+	// Sort in descending order
+	std::sort(rssItems.rbegin(), rssItems.rend());
 }
